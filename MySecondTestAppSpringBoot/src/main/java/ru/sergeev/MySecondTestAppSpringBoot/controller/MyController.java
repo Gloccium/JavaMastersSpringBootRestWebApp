@@ -1,23 +1,27 @@
+// ru.sergeev.MySecondTestAppSpringBoot.controller.MyController
 package ru.sergeev.MySecondTestAppSpringBoot.controller;
 
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindingResult;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import ru.sergeev.MySecondTestAppSpringBoot.exception.ValidationFailedException;
+import ru.sergeev.MySecondTestAppSpringBoot.model.ErrorCodes;
+import ru.sergeev.MySecondTestAppSpringBoot.model.ErrorMessages;
 import ru.sergeev.MySecondTestAppSpringBoot.model.Request;
 import ru.sergeev.MySecondTestAppSpringBoot.model.Response;
 import ru.sergeev.MySecondTestAppSpringBoot.service.ValidationService;
+import ru.sergeev.MySecondTestAppSpringBoot.util.DateTimeUtil;
 
 @RestController
 public class MyController {
+
+    private static final Logger log = LoggerFactory.getLogger(MyController.class);
 
     private final ValidationService validationService;
 
@@ -26,47 +30,51 @@ public class MyController {
         this.validationService = validationService;
     }
 
-    @PostMapping(value = "/feedback")
-    public ResponseEntity<Response> feedback(@Valid @RequestBody Request request,
-                                             BindingResult bindingResult) {
-
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+    @PostMapping("/feedback")
+    public ResponseEntity<Response> feedback(@Valid @RequestBody Request request, BindingResult bindingResult) {
+        log.info("Получен запрос: {}", request);
 
         try {
             validationService.isValid(bindingResult);
+            log.info("Запрос прошёл валидацию: UID={}, systemName={}", request.getUid(), request.getSystemName());
         } catch (ValidationFailedException e) {
+            log.error("Исключение валидации для UID '{}': {}", request.getUid(), e.getMessage());
             Response errorResponse = Response.builder()
                     .uid(request.getUid())
                     .operationUid(request.getOperationUid())
-                    .systemTime(formatter.format(new Date()))
-                    .code("failed")
-                    .errorCode("ValidationException")
-                    .errorMessage("Ошибка валидации")
+                    .systemTime(DateTimeUtil.getCustomFormat().format(new Date()))
+                    .code(ErrorCodes.FAILED.getName())
+                    .errorCode(ErrorMessages.VALIDATION_EXCEPTION.name())
+                    .errorMessage(ErrorMessages.VALIDATION_EXCEPTION.getDescription())
                     .build();
-            return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+            log.info("Сформирован ответ об ошибке: {}", errorResponse);
+            return ResponseEntity.badRequest().body(errorResponse);
         }
 
         if ("123".equals(request.getUid())) {
+            log.warn("Обнаружен запрещённый UID: '123'");
             Response errorResponse = Response.builder()
                     .uid(request.getUid())
                     .operationUid(request.getOperationUid())
-                    .systemTime(formatter.format(new Date()))
-                    .code("failed")
-                    .errorCode("UnsupportedCodeException")
-                    .errorMessage("UID '123' не поддерживается")
+                    .systemTime(DateTimeUtil.getCustomFormat().format(new Date()))
+                    .code(ErrorCodes.FAILED.getName())
+                    .errorCode(ErrorMessages.UNSUPPORTED_EXCEPTION.name())
+                    .errorMessage(ErrorMessages.UNSUPPORTED_EXCEPTION.getDescription())
                     .build();
-            return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+            log.info("Сформирован ответ об ошибке (неподдерживаемый UID): {}", errorResponse);
+            return ResponseEntity.badRequest().body(errorResponse);
         }
 
         Response successResponse = Response.builder()
                 .uid(request.getUid())
                 .operationUid(request.getOperationUid())
-                .systemTime(formatter.format(new Date()))
-                .code("success")
-                .errorCode("")
-                .errorMessage("")
+                .systemTime(DateTimeUtil.getCustomFormat().format(new Date()))
+                .code(ErrorCodes.SUCCESS.getName())
+                .errorCode(ErrorCodes.EMPTY.getName())
+                .errorMessage(ErrorMessages.EMPTY.getDescription())
                 .build();
 
-        return new ResponseEntity<>(successResponse, HttpStatus.OK);
+        log.info("Успешно сформирован ответ: {}", successResponse);
+        return ResponseEntity.ok(successResponse);
     }
 }

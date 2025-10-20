@@ -23,7 +23,7 @@ public class Request {
     @Size(max = 32, message = "Operation UID не может превышать 32 символа")
     private String operationUid;
 
-    private String systemName;
+    private Systems systemName; // ← изменено с String на Systems
 
     @NotBlank(message = "System time обязателен")
     private String systemTime;
@@ -39,4 +39,19 @@ public class Request {
     private int productCode;
 
     private int smsCode;
+
+    @Override
+    public String toString() {
+        return "{" +
+                "uid='" + uid + '\'' +
+                ", operationUid='" + operationUid + '\'' +
+                ", systemName=" + systemName +  // enum, без кавычек
+                ", systemTime='" + systemTime + '\'' +
+                ", source='" + source + '\'' +
+                ", communicationId=" + communicationId +
+                ", templateId=" + templateId +
+                ", productCode=" + productCode +
+                ", smsCode=" + smsCode +
+                '}';
+    }
 }
